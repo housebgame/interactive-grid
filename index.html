@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Multi-Grid</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .controls {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            max-width: 800px;
+            width: 100%;
+        }
+        .control-group {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #clearButton {
+            background-color: #f44336;
+        }
+        #clearButton:hover {
+            background-color: #d32f2f;
+        }
+        #eraserButton {
+            background-color: #2196F3;
+        }
+        #eraserButton:hover {
+            background-color: #0b7dda;
+        }
+        #container {
+            max-width: 100%;
+            overflow: auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        #grid {
+            cursor: pointer;
+        }
+        #color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .color-swatch.selected {
+            border: 2px solid black;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .grid-type-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .grid-type-option.selected {
+            background-color: #e0f7e0;
+            border-radius: 4px;
+        }
+        .grid-type-icons {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .tool-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .eraser-active {
+            background-color: #90caf9 !important;
+            border: 2px solid #1565c0 !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Multi-Grid</h1>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>Grid Type:</label>
+            <div class="grid-type-icons">
+                <div class="grid-type-option selected" data-type="hex">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <polygon points="12,4 20,8 20,16 12,20 4,16 4,8" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Hexagon</span>
+                </div>
+                <div class="grid-type-option" data-type="square">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Square</span>
+                </div>
+                <div class="grid-type-option" data-type="triangle">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <polygon points="12,4 20,20 4,20" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Triangle</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group hex-options">
+            <label for="orientation">Orientation:</label>
+            <select id="orientation">
+                <option value="pointy">Pointy Top</option>
+                <option value="flat">Flat Top</option>
+            </select>
+        </div>
+
+        <div class="control-group triangle-options" style="display:none;">
+            <label for="triangleOrientation">Triangle Orientation:</label>
+            <select id="triangleOrientation">
+                <option value="up">Up-Down</option>
+                <option value="left">Left-Right</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="cols">Columns:</label>
+            <input type="number" id="cols" min="1" max="50" value="10">
+        </div>
+
+        <div class="control-group">
+            <label for="rows">Rows:</label>
+            <input type="number" id="rows" min="1" max="50" value="10">
+        </div>
+
+        <div class="control-group">
+            <label for="cellSize">Cell Size:</label>
+            <input type="number" id="cellSize" min="10" max="100" value="30">
+        </div>
+
+        <div class="control-group">
+            <div class="tool-buttons">
+                <button id="applyButton">Apply Settings</button>
+                <button id="clearButton">Clear All</button>
+                <button id="eraserButton">Eraser Tool</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Selected Color:</label>
+            <input type="color" id="colorPicker" value="#4CAF50">
+            <div id="color-palette"></div>
+        </div>
+    </div>
+
+    <div id="container">
+        <svg id="grid"></svg>
+    </div>
+
+    <script>
+        // Main variables
+        let isDrawing = false;
+        let currentColor = '#4CAF50';
+        let grid = [];
+        let gridType = 'hex';
+        let orientation = 'pointy';
+        let triangleOrientation = 'up';
+        let cols = 10;
+        let rows = 10;
+        let cellSize = 30;
+        let eraserMode = false;
+        const defaultCellColor = '#f0f0f0';
+        
+        // Predefined colors
+        const paletteColors = [
+            '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
+            '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080',
+            '#008000', '#800000', '#008080', '#808000', '#C0C0C0'
+        ];
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            createColorPalette();
+            initializeControls();
+            createGrid();
+        });
+
+        function createColorPalette() {
+            const palette = document.getElementById('color-palette');
+            
+            paletteColors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.dataset.color = color;
+                
+                swatch.addEventListener('click', function() {
+                    // Update selected color
+                    currentColor = this.dataset.color;
+                    document.getElementById('colorPicker').value = currentColor;
+                    
+                    // Update selection styling
+                    document.querySelectorAll('.color-swatch').forEach(s => {
+                        s.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    
+                    // Disable eraser mode
+                    eraserMode = false;
+                    document.getElementById('eraserButton').classList.remove('eraser-active');
+                });
+                
+                palette.appendChild(swatch);
+            });
+            
+            // Set initial selected color
+            palette.querySelector('.color-swatch').classList.add('selected');
+        }
+
+        function initializeControls() {
+            // Grid type selection
+            document.querySelectorAll('.grid-type-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    gridType = this.dataset.type;
+                    
+                    // Update selection styling
+                    document.querySelectorAll('.grid-type-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    
+                    // Show/hide orientation options based on grid type
+                    if (gridType === 'hex') {
+                        document.querySelector('.hex-options').style.display = 'flex';
+                        document.querySelector('.triangle-options').style.display = 'none';
+                    } else if (gridType === 'triangle') {
+                        document.querySelector('.hex-options').style.display = 'none';
+                        document.querySelector('.triangle-options').style.display = 'flex';
+                    } else {
+                        document.querySelector('.hex-options').style.display = 'none';
+                        document.querySelector('.triangle-options').style.display = 'none';
+                    }
+                });
+            });
+            
+            // Custom color picker
+            document.getElementById('colorPicker').addEventListener('input', function(e) {
+                currentColor = e.target.value;
+                document.querySelectorAll('.color-swatch').forEach(s => {
+                    s.classList.remove('selected');
+                });
+                
+                // Disable eraser mode
+                eraserMode = false;
+                document.getElementById('eraserButton').classList.remove('eraser-active');
+            });
+            
+            // Apply button
+            document.getElementById('applyButton').addEventListener('click', function() {
+                cols = parseInt(document.getElementById('cols').value) || 10;
+                rows = parseInt(document.getElementById('rows').value) || 10;
+                cellSize = parseInt(document.getElementById('cellSize').value) || 30;
+                orientation = document.getElementById('orientation').value;
+                
+                if (document.getElementById('triangleOrientation')) {
+                    triangleOrientation = document.getElementById('triangleOrientation').value;
+                }
+                
+                createGrid();
+            });
+            
+            // Clear button
+            document.getElementById('clearButton').addEventListener('click', function() {
+                document.querySelectorAll('#grid polygon, #grid rect').forEach(cell => {
+                    cell.setAttribute('fill', defaultCellColor);
+                });
+            });
+            
+            // Eraser button
+            document.getElementById('eraserButton').addEventListener('click', function() {
+                eraserMode = !eraserMode;
+                
+                if (eraserMode) {
+                    this.classList.add('eraser-active');
+                    document.querySelectorAll('.color-swatch').forEach(s => {
+                        s.classList.remove('selected');
+                    });
+                } else {
+                    this.classList.remove('eraser-active');
+                    // Reselect the current color
+                    const colorPicker = document.getElementById('colorPicker');
+                    currentColor = colorPicker.value;
+                }
+            });
+        }
+
+        function createGrid() {
+            const svg = document.getElementById('grid');
+            svg.innerHTML = '';
+            grid = [];
+            
+            switch(gridType) {
+                case 'hex':
+                    createHexGrid(svg);
+                    break;
+                case 'square':
+                    createSquareGrid(svg);
+                    break;
+                case 'triangle':
+                    createTriangleGrid(svg);
+                    break;
+            }
+            
+            // Add mouse event listeners to SVG
+            svg.addEventListener('mouseup', function() {
+                isDrawing = false;
+            });
+            
+            svg.addEventListener('mouseleave', function() {
+                isDrawing = false;
+            });
+            
+            document.addEventListener('touchend', function() {
+                isDrawing = false;
+            });
+        }
+
+        function createHexGrid(svg) {
+            // Calculate constants based on orientation
+            const width = orientation === 'pointy' ? Math.sqrt(3) * cellSize : 2 * cellSize;
+            const height = orientation === 'pointy' ? 2 * cellSize : Math.sqrt(3) * cellSize;
+            const widthSpacing = orientation === 'pointy' ? width : width * 3/4;
+            const heightSpacing = orientation === 'pointy' ? height * 3/4 : height;
+            
+            // Set SVG dimensions
+            const svgWidth = cols * widthSpacing + (orientation === 'pointy' ? width/2 : width/4);
+            const svgHeight = rows * heightSpacing + (orientation === 'pointy' ? height/4 : height/2);
+            svg.setAttribute('width', svgWidth);
+            svg.setAttribute('height', svgHeight);
+            
+            // Create hex grid
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // Calculate center position
+                    let x, y;
+                    if (orientation === 'pointy') {
+                        x = col * widthSpacing + (row % 2) * (width / 2) + width / 2;
+                        y = row * heightSpacing + height / 2;
+                    } else {
+                        x = col * widthSpacing + width / 2;
+                        y = row * heightSpacing + (col % 2) * (height / 2) + height / 2;
+                    }
+                    
+                    const points = calculateHexPoints(x, y);
+                    const hex = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    
+                    hex.setAttribute('points', points);
+                    hex.setAttribute('fill', defaultCellColor);
+                    hex.setAttribute('stroke', '#cccccc');
+                    hex.setAttribute('stroke-width', '1');
+                    hex.dataset.row = row;
+                    hex.dataset.col = col;
+                    
+                    // Add event handlers
+                    addCellEventListeners(hex);
+                    
+                    svg.appendChild(hex);
+                    grid.push(hex);
+                }
+            }
+        }
+
+        function createSquareGrid(svg) {
+            // Set SVG dimensions
+            const svgWidth = cols * cellSize;
+            const svgHeight = rows * cellSize;
+            svg.setAttribute('width', svgWidth);
+            svg.setAttribute('height', svgHeight);
+            
+            // Create square grid
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const square = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    
+                    square.setAttribute('x', col * cellSize);
+                    square.setAttribute('y', row * cellSize);
+                    square.setAttribute('width', cellSize);
+                    square.setAttribute('height', cellSize);
+                    square.setAttribute('fill', defaultCellColor);
+                    square.setAttribute('stroke', '#cccccc');
+                    square.setAttribute('stroke-width', '1');
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    // Add event handlers
+                    addCellEventListeners(square);
+                    
+                    svg.appendChild(square);
+                    grid.push(square);
+                }
+            }
+        }
+
+        function createTriangleGrid(svg) {
+            const triangleHeight = triangleOrientation === 'up' ? 
+                Math.sqrt(3) * cellSize / 2 : 
+                cellSize;
+                
+            const triangleWidth = triangleOrientation === 'up' ? 
+                cellSize : 
+                Math.sqrt(3) * cellSize / 2;
+            
+            // Set SVG dimensions
+            let svgWidth, svgHeight;
+            
+            if (triangleOrientation === 'up') {
+                svgWidth = cols * triangleWidth;
+                svgHeight = rows * triangleHeight;
+            } else {
+                svgWidth = cols * triangleWidth * 2;
+                svgHeight = rows * triangleHeight;
+            }
+            
+            svg.setAttribute('width', svgWidth);
+            svg.setAttribute('height', svgHeight);
+            
+            // Create triangle grid
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // For each grid position, create two triangles (up and down or left and right)
+                    if (triangleOrientation === 'up') {
+                        // Up triangle
+                        let upTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                        let upPoints = [
+                            col * triangleWidth, (row + 1) * triangleHeight,
+                            (col + 0.5) * triangleWidth, row * triangleHeight,
+                            (col + 1) * triangleWidth, (row + 1) * triangleHeight
+                        ].join(' ');
+                        
+                        upTriangle.setAttribute('points', upPoints);
+                        upTriangle.setAttribute('fill', defaultCellColor);
+                        upTriangle.setAttribute('stroke', '#cccccc');
+                        upTriangle.setAttribute('stroke-width', '1');
+                        upTriangle.dataset.row = row;
+                        upTriangle.dataset.col = col;
+                        upTriangle.dataset.type = 'up';
+                        
+                        addCellEventListeners(upTriangle);
+                        svg.appendChild(upTriangle);
+                        grid.push(upTriangle);
+                        
+                        // Down triangle (if not at the bottom edge)
+                        if (row < rows - 1) {
+                            let downTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                            let downPoints = [
+                                col * triangleWidth, (row + 1) * triangleHeight,
+                                (col + 1) * triangleWidth, (row + 1) * triangleHeight,
+                                (col + 0.5) * triangleWidth, (row + 2) * triangleHeight
+                            ].join(' ');
+                            
+                            downTriangle.setAttribute('points', downPoints);
+                            downTriangle.setAttribute('fill', defaultCellColor);
+                            downTriangle.setAttribute('stroke', '#cccccc');
+                            downTriangle.setAttribute('stroke-width', '1');
+                            downTriangle.dataset.row = row;
+                            downTriangle.dataset.col = col;
+                            downTriangle.dataset.type = 'down';
+                            
+                            addCellEventListeners(downTriangle);
+                            svg.appendChild(downTriangle);
+                            grid.push(downTriangle);
+                        }
+                    } else {
+                        // Left triangle
+                        let leftTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                        let leftPoints = [
+                            col * triangleWidth * 2, row * triangleHeight,
+                            col * triangleWidth * 2, (row + 1) * triangleHeight,
+                            (col + 0.5) * triangleWidth * 2, (row + 0.5) * triangleHeight
+                        ].join(' ');
+                        
+                        leftTriangle.setAttribute('points', leftPoints);
+                        leftTriangle.setAttribute('fill', defaultCellColor);
+                        leftTriangle.setAttribute('stroke', '#cccccc');
+                        leftTriangle.setAttribute('stroke-width', '1');
+                        leftTriangle.dataset.row = row;
+                        leftTriangle.dataset.col = col;
+                        leftTriangle.dataset.type = 'left';
+                        
+                        addCellEventListeners(leftTriangle);
+                        svg.appendChild(leftTriangle);
+                        grid.push(leftTriangle);
+                        
+                        // Right triangle
+                        let rightTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                        let rightPoints = [
+                            (col + 0.5) * triangleWidth * 2, (row + 0.5) * triangleHeight,
+                            col * triangleWidth * 2 + triangleWidth * 2, row * triangleHeight,
+                            col * triangleWidth * 2 + triangleWidth * 2, (row + 1) * triangleHeight
+                        ].join(' ');
+                        
+                        rightTriangle.setAttribute('points', rightPoints);
+                        rightTriangle.setAttribute('fill', defaultCellColor);
+                        rightTriangle.setAttribute('stroke', '#cccccc');
+                        rightTriangle.setAttribute('stroke-width', '1');
+                        rightTriangle.dataset.row = row;
+                        rightTriangle.dataset.col = col;
+                        rightTriangle.dataset.type = 'right';
+                        
+                        addCellEventListeners(rightTriangle);
+                        svg.appendChild(rightTriangle);
+                        grid.push(rightTriangle);
+                    }
+                }
+            }
+        }
+
+        function addCellEventListeners(cell) {
+            cell.addEventListener('mousedown', function(e) {
+                isDrawing = true;
+                const fillColor = eraserMode ? defaultCellColor : currentColor;
+                this.setAttribute('fill', fillColor);
+            });
+            
+            cell.addEventListener('mouseover', function(e) {
+                if (isDrawing) {
+                    const fillColor = eraserMode ? defaultCellColor : currentColor;
+                    this.setAttribute('fill', fillColor);
+                }
+            });
+            
+            cell.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                const fillColor = eraserMode ? defaultCellColor : currentColor;
+                this.setAttribute('fill', fillColor);
+            });
+            
+            cell.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && (element.tagName === 'polygon' || element.tagName === 'rect')) {
+                    const fillColor = eraserMode ? defaultCellColor : currentColor;
+                    element.setAttribute('fill', fillColor);
+                }
+            });
+        }
+
+        function calculateHexPoints(centerX, centerY) {
+            let points = [];
+            
+            for (let i = 0; i < 6; i++) {
+                let angle;
+                if (orientation === 'pointy') {
+                    angle = 2 * Math.PI / 6 * i + Math.PI / 6;
+                } else {
+                    angle = 2 * Math.PI / 6 * i;
+                }
+                
+                const x = centerX + cellSize * Math.cos(angle);
+                const y = centerY + cellSize * Math.sin(angle);
+                points.push(`${x},${y}`);
+            }
+            
+            return points.join(' ');
+        }
+    </script>
+</body>
+</html>
