@@ -456,119 +456,105 @@
         }
 
         function createTriangleGrid(svg) {
-            const triangleHeight = triangleOrientation === 'up' ? 
-                Math.sqrt(3) * cellSize / 2 : 
-                cellSize;
-                
-            const triangleWidth = triangleOrientation === 'up' ? 
-                cellSize : 
-                Math.sqrt(3) * cellSize / 2;
-            
-            // Set SVG dimensions
+            svg.innerHTML = ''; // Clear previous grid content
+            grid = [];
+
+            const h = Math.sqrt(3) / 2 * cellSize; // Height of an equilateral triangle
+
             let svgWidth, svgHeight;
-            
+
             if (triangleOrientation === 'up') {
-                svgWidth = cols * triangleWidth;
-                svgHeight = rows * triangleHeight;
-            } else {
-                svgWidth = cols * triangleWidth * 2;
-                svgHeight = rows * triangleHeight;
-            }
-            
-            svg.setAttribute('width', svgWidth);
-            svg.setAttribute('height', svgHeight);
-            
-            // Create triangle grid
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    // For each grid position, create two triangles (up and down or left and right)
-                    if (triangleOrientation === 'up') {
-                        // Up triangle
-                        let upTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                        let upPoints = [
-                            col * triangleWidth, (row + 1) * triangleHeight,
-                            (col + 0.5) * triangleWidth, row * triangleHeight,
-                            (col + 1) * triangleWidth, (row + 1) * triangleHeight
-                        ].join(' ');
-                        
-                        upTriangle.setAttribute('points', upPoints);
-                        upTriangle.setAttribute('fill', defaultCellColor);
-                        upTriangle.setAttribute('stroke', '#cccccc');
-                        upTriangle.setAttribute('stroke-width', '1');
-                        upTriangle.dataset.row = row;
-                        upTriangle.dataset.col = col;
-                        upTriangle.dataset.type = 'up';
-                        
-                        addCellEventListeners(upTriangle);
-                        svg.appendChild(upTriangle);
-                        grid.push(upTriangle);
-                        
-                        // Down triangle (if not at the bottom edge)
-                        if (row < rows - 1) {
-                            let downTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                            let downPoints = [
-                                col * triangleWidth, (row + 1) * triangleHeight,
-                                (col + 1) * triangleWidth, (row + 1) * triangleHeight,
-                                (col + 0.5) * triangleWidth, (row + 2) * triangleHeight
-                            ].join(' ');
-                            
-                            downTriangle.setAttribute('points', downPoints);
-                            downTriangle.setAttribute('fill', defaultCellColor);
-                            downTriangle.setAttribute('stroke', '#cccccc');
-                            downTriangle.setAttribute('stroke-width', '1');
-                            downTriangle.dataset.row = row;
-                            downTriangle.dataset.col = col;
-                            downTriangle.dataset.type = 'down';
-                            
-                            addCellEventListeners(downTriangle);
-                            svg.appendChild(downTriangle);
-                            grid.push(downTriangle);
+                // Calculate necessary SVG dimensions for Up-Down orientation
+                svgWidth = cols * cellSize / 2 + cellSize / 2; // Width depends on number of half-bases
+                svgHeight = rows * h;
+                svg.setAttribute('width', svgWidth);
+                svg.setAttribute('height', svgHeight);
+
+                // Create Up-Down triangle grid
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) { // 'cols' now represents the number of triangle points horizontally
+                        const x = c * cellSize / 2; // Starting x for the base segment
+                        const y = r * h; // Starting y for the row
+
+                        const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                        let points;
+                        let triangleType;
+
+                        // Determine if the triangle points up or down based on row and column parity
+                        if ((r + c) % 2 === 0) { // Even parity -> Points Down
+                            points = `${x},${y} ${x + cellSize},${y} ${x + cellSize / 2},${y + h}`;
+                            triangleType = 'down';
+                        } else { // Odd parity -> Points Up
+                            points = `${x + cellSize / 2},${y} ${x},${y + h} ${x + cellSize},${y + h}`;
+                            triangleType = 'up';
                         }
-                    } else {
-                        // Left triangle
-                        let leftTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                        let leftPoints = [
-                            col * triangleWidth * 2, row * triangleHeight,
-                            col * triangleWidth * 2, (row + 1) * triangleHeight,
-                            (col + 0.5) * triangleWidth * 2, (row + 0.5) * triangleHeight
-                        ].join(' ');
-                        
-                        leftTriangle.setAttribute('points', leftPoints);
-                        leftTriangle.setAttribute('fill', defaultCellColor);
-                        leftTriangle.setAttribute('stroke', '#cccccc');
-                        leftTriangle.setAttribute('stroke-width', '1');
-                        leftTriangle.dataset.row = row;
-                        leftTriangle.dataset.col = col;
-                        leftTriangle.dataset.type = 'left';
-                        
-                        addCellEventListeners(leftTriangle);
-                        svg.appendChild(leftTriangle);
-                        grid.push(leftTriangle);
-                        
-                        // Right triangle
-                        let rightTriangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                        let rightPoints = [
-                            (col + 0.5) * triangleWidth * 2, (row + 0.5) * triangleHeight,
-                            col * triangleWidth * 2 + triangleWidth * 2, row * triangleHeight,
-                            col * triangleWidth * 2 + triangleWidth * 2, (row + 1) * triangleHeight
-                        ].join(' ');
-                        
-                        rightTriangle.setAttribute('points', rightPoints);
-                        rightTriangle.setAttribute('fill', defaultCellColor);
-                        rightTriangle.setAttribute('stroke', '#cccccc');
-                        rightTriangle.setAttribute('stroke-width', '1');
-                        rightTriangle.dataset.row = row;
-                        rightTriangle.dataset.col = col;
-                        rightTriangle.dataset.type = 'right';
-                        
-                        addCellEventListeners(rightTriangle);
-                        svg.appendChild(rightTriangle);
-                        grid.push(rightTriangle);
+
+                        triangle.setAttribute('points', points);
+                        triangle.setAttribute('fill', defaultCellColor);
+                        triangle.setAttribute('stroke', '#cccccc');
+                        triangle.setAttribute('stroke-width', '1');
+                        triangle.dataset.row = r;
+                        triangle.dataset.col = c; // This column index refers to the triangle position
+                        triangle.dataset.type = triangleType;
+
+                        addCellEventListeners(triangle);
+                        svg.appendChild(triangle);
+                        grid.push(triangle);
                     }
                 }
+                 // Refine dimensions based on actual content - ensures visibility
+                const bounds = svg.getBBox();
+                svg.setAttribute('width', bounds.x + bounds.width + 1); // +1 for stroke
+                svg.setAttribute('height', bounds.y + bounds.height + 1);
+
+
+            } else { // triangleOrientation === 'left' (Left-Right)
+                const w = Math.sqrt(3) / 2 * cellSize; // Width of triangle when side is vertical
+
+                // Calculate necessary SVG dimensions for Left-Right orientation
+                svgWidth = cols * w;
+                svgHeight = rows * cellSize / 2 + cellSize / 2;
+                svg.setAttribute('width', svgWidth);
+                svg.setAttribute('height', svgHeight);
+
+                // Create Left-Right triangle grid
+                for (let c = 0; c < cols; c++) { // Iterate columns (representing horizontal progression)
+                    for (let r = 0; r < rows; r++) { // Iterate rows (representing vertical progression)
+                        const x = c * w; // Starting x for the column
+                        const y = r * cellSize / 2; // Starting y for the point
+
+                        const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                        let points;
+                        let triangleType;
+
+                        // Determine if the triangle points left or right based on row and column parity
+                        if ((r + c) % 2 === 0) { // Even parity -> Points Right
+                            points = `${x},${y} ${x + w},${y + cellSize / 2} ${x},${y + cellSize}`;
+                            triangleType = 'right';
+                        } else { // Odd parity -> Points Left
+                            points = `${x + w},${y} ${x},${y + cellSize / 2} ${x + w},${y + cellSize}`;
+                            triangleType = 'left';
+                        }
+
+                        triangle.setAttribute('points', points);
+                        triangle.setAttribute('fill', defaultCellColor);
+                        triangle.setAttribute('stroke', '#cccccc');
+                        triangle.setAttribute('stroke-width', '1');
+                        triangle.dataset.row = r; // Row index might be less intuitive here
+                        triangle.dataset.col = c;
+                        triangle.dataset.type = triangleType;
+
+                        addCellEventListeners(triangle);
+                        svg.appendChild(triangle);
+                        grid.push(triangle);
+                    }
+                }
+                 // Refine dimensions based on actual content
+                const bounds = svg.getBBox();
+                svg.setAttribute('width', bounds.x + bounds.width + 1); // +1 for stroke
+                svg.setAttribute('height', bounds.y + bounds.height + 1);
             }
         }
-
         function addCellEventListeners(cell) {
             cell.addEventListener('mousedown', function(e) {
                 isDrawing = true;
